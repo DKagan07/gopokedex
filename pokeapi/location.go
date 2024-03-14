@@ -22,7 +22,7 @@ type PokemonApiLocationResult struct {
 func PokemonApiLocationCall(url string) ([]byte, error) {
 	res, err := http.Get(url)
 	if err != nil {
-		return []byte{}, fmt.Errorf("Failed HTTP request: %v", err)
+		return nil, fmt.Errorf("Failed HTTP request: %v", err)
 	}
 	defer res.Body.Close()
 

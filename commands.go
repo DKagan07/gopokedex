@@ -20,7 +20,7 @@ type Config struct {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*Config) error
+	callback    func(*Config, string) error
 }
 
 // setting up the commands and callback functions
@@ -46,6 +46,11 @@ func commands() map[string]cliCommand {
 			description: "Displays previous 20 locations",
 			callback:    mapbCallback,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Explores the pokemon found in a particular area",
+			callback:    exploreCallback,
+		},
 	}
 }
 
@@ -58,22 +63,32 @@ func pokedexHelp() {
 	fmt.Println()
 }
 
-func helpCallback(cfg *Config) error {
+func helpCallback(cfg *Config, param string) error {
+	if param != "" {
+		return fmt.Errorf("Have a param, don't want one")
+	}
 	pokedexHelp()
 	return nil
 }
 
-func exitCallback(cfg *Config) error {
+func exitCallback(cfg *Config, param string) error {
+	if param != "" {
+		return fmt.Errorf("Have a param, don't want one")
+	}
 	fmt.Println("Exiting...")
 	os.Exit(0)
 	return nil
 }
 
-func mapCallback(cfg *Config) error {
+func mapCallback(cfg *Config, param string) error {
+	if param != "" {
+		return fmt.Errorf("Have a param, don't want one")
+	}
+
 	locations := pokeapi.PokemonApiLocationResult{}
 
 	if cfg.next == "" {
-		cfg.next = fmt.Sprintf("%s/location", pokemonApiV2)
+		cfg.next = fmt.Sprintf("%s/location-area", pokemonApiV2)
 	}
 	url := cfg.next
 	v, ok := cfg.cache.Get(url)
@@ -90,7 +105,6 @@ func mapCallback(cfg *Config) error {
 			return fmt.Errorf("Error with unmarshalling location result: %v", err)
 		}
 	} else {
-		fmt.Println("Used cache!")
 		var err error
 		locations, err = pokeapi.UnmarshalToLocationResult(v)
 		if err != nil {
@@ -112,7 +126,11 @@ func mapCallback(cfg *Config) error {
 	return nil
 }
 
-func mapbCallback(cfg *Config) error {
+func mapbCallback(cfg *Config, param string) error {
+	if param != "" {
+		return fmt.Errorf("Have a param, don't want one")
+	}
+
 	locations := pokeapi.PokemonApiLocationResult{}
 
 	if cfg.prev == "" {
@@ -135,7 +153,6 @@ func mapbCallback(cfg *Config) error {
 			return fmt.Errorf("Error with unmarshalling location result: %v", err)
 		}
 	} else { // in get, we have []byte
-		fmt.Println("used cache!")
 		var err error
 		locations, err = pokeapi.UnmarshalToLocationResult(v)
 		if err != nil {
@@ -154,6 +171,40 @@ func mapbCallback(cfg *Config) error {
 	}
 
 	cfg.next = locations.Next
+
+	return nil
+}
+
+func exploreCallback(cfg *Config, param string) error {
+	pokePerLocation := pokeapi.PokemonApiPokesPerLocation{}
+	url := fmt.Sprintf("%s/location-area/%s", pokemonApiV2, param)
+
+	v, ok := cfg.cache.Get(url)
+	if !ok { // if not in cache, we have to api call
+		bytes, err := pokeapi.PokeApiPokePerLocationCall(url)
+		if err != nil {
+			return fmt.Errorf("http request to get pokesperlocation: %v", err)
+		}
+
+		cfg.cache.Add(url, bytes)
+
+		pokePerLocation, err = pokeapi.UnmarshalToPokePerLocationResult(bytes)
+		if err != nil {
+			return fmt.Errorf("unmarshaling pokeperloation w/out cache: %v", err)
+		}
+	} else {
+		var err error
+		pokePerLocation, err = pokeapi.UnmarshalToPokePerLocationResult(v)
+		if err != nil {
+			return fmt.Errorf("unmarshaling pokeperloation w/ cache: %v", err)
+		}
+	}
+
+	fmt.Printf("Exploring %s...\n", param)
+	fmt.Println("Found Pokemon: ")
+	for _, v := range pokePerLocation.PokemonEncounters {
+		fmt.Println("- ", v.Pokemon.Name)
+	}
 
 	return nil
 }
