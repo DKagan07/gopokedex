@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/DKagan07/gopokedex/pokecache"
 )
 
 func pokedexCursor() {
@@ -16,11 +19,15 @@ func main() {
 	commands := commands()
 	r := os.Stdin
 	scanner := bufio.NewScanner(r)
+	dur := time.Minute
 
 	pokedexHelp()
 	pokedexCursor()
 
-	config := Config{}
+	cache := pokecache.NewCache(dur)
+	config := Config{
+		cache: &cache,
+	}
 
 	// the logic
 	for scanner.Scan() {

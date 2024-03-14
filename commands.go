@@ -1,29 +1,20 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
+
+	"github.com/DKagan07/gopokedex/pokeapi"
+	"github.com/DKagan07/gopokedex/pokecache"
 )
 
 const pokemonApiV2 = "https://pokeapi.co/api/v2"
 
-type PokemonApiLocationResult struct {
-	Count    int     `json:"count"`
-	Next     string  `json:"next"`
-	Previous *string `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
-}
-
 type Config struct {
-	next string
-	prev string
+	next  string
+	prev  string
+	cache *pokecache.Cache
 }
 
 type cliCommand struct {
@@ -79,13 +70,32 @@ func exitCallback(cfg *Config) error {
 }
 
 func mapCallback(cfg *Config) error {
+	locations := pokeapi.PokemonApiLocationResult{}
+
 	if cfg.next == "" {
 		cfg.next = fmt.Sprintf("%s/location", pokemonApiV2)
 	}
 	url := cfg.next
-	locations, err := pokemonApiLocationCall(url)
-	if err != nil {
-		return fmt.Errorf("Error with pokemon API location call: %v", err)
+	v, ok := cfg.cache.Get(url)
+	// If it's not in cache
+	if !ok {
+		body, err := pokeapi.PokemonApiLocationCall(url)
+		if err != nil {
+			return fmt.Errorf("Error with pokemon API location call: %v", err)
+		}
+
+		cfg.cache.Add(url, body)
+		locations, err = pokeapi.UnmarshalToLocationResult(body)
+		if err != nil {
+			return fmt.Errorf("Error with unmarshalling location result: %v", err)
+		}
+	} else {
+		fmt.Println("Used cache!")
+		var err error
+		locations, err = pokeapi.UnmarshalToLocationResult(v)
+		if err != nil {
+			return fmt.Errorf("Error with unmarshalling location result: %v", err)
+		}
 	}
 
 	for _, v := range locations.Results {
@@ -103,14 +113,34 @@ func mapCallback(cfg *Config) error {
 }
 
 func mapbCallback(cfg *Config) error {
+	locations := pokeapi.PokemonApiLocationResult{}
+
 	if cfg.prev == "" {
 		return errors.New("No previous map bundle")
 	}
 
 	url := cfg.prev
-	locations, err := pokemonApiLocationCall(url)
-	if err != nil {
-		return fmt.Errorf("Error with pokemon API location call: %v", err)
+
+	v, ok := cfg.cache.Get(url)
+	// not in get
+	if !ok {
+		body, err := pokeapi.PokemonApiLocationCall(url)
+		if err != nil {
+			return fmt.Errorf("Error with pokemon API location call: %v", err)
+		}
+
+		cfg.cache.Add(url, body)
+		locations, err = pokeapi.UnmarshalToLocationResult(body)
+		if err != nil {
+			return fmt.Errorf("Error with unmarshalling location result: %v", err)
+		}
+	} else { // in get, we have []byte
+		fmt.Println("used cache!")
+		var err error
+		locations, err = pokeapi.UnmarshalToLocationResult(v)
+		if err != nil {
+			return fmt.Errorf("Error with unmarshalling location result: %v", err)
+		}
 	}
 
 	for _, v := range locations.Results {
@@ -126,26 +156,4 @@ func mapbCallback(cfg *Config) error {
 	cfg.next = locations.Next
 
 	return nil
-}
-
-// Api calls
-func pokemonApiLocationCall(url string) (PokemonApiLocationResult, error) {
-	var locations PokemonApiLocationResult
-
-	res, err := http.Get(url)
-	if err != nil {
-		return locations, fmt.Errorf("Failed HTTP request: %v", err)
-	}
-	defer res.Body.Close()
-
-	body, err := io.ReadAll(res.Body)
-	if err != nil {
-		return locations, errors.New("Error with ReadAll")
-	}
-
-	if err := json.Unmarshal(body, &locations); err != nil {
-		return locations, errors.New("Error unmarshaling json")
-	}
-
-	return locations, nil
 }
