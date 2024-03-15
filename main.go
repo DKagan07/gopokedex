@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DKagan07/gopokedex/pokeapi"
 	"github.com/DKagan07/gopokedex/pokecache"
 )
 
@@ -25,8 +26,10 @@ func main() {
 	pokedexCursor()
 
 	cache := pokecache.NewCache(dur)
+	pokedex := make(map[string]pokeapi.Pokemon)
 	config := Config{
-		cache: &cache,
+		cache:   &cache,
+		pokedex: pokedex,
 	}
 
 	// the logic
@@ -34,6 +37,8 @@ func main() {
 		val := strings.ToLower(scanner.Text())
 		// have to string parse "val" here
 		strs := strings.Split(val, " ")
+		cmd := strs[0]
+
 		switch strs[0] {
 		case "exit":
 			if len(strs) > 1 {
@@ -48,7 +53,7 @@ func main() {
 				fmt.Println("Too many arguments in 'help' command")
 				break
 			}
-			if err := commands[val].callback(&config, ""); err != nil {
+			if err := commands[cmd].callback(&config, ""); err != nil {
 				fmt.Println("ERROR with help: ", err)
 			}
 		case "map":
@@ -56,7 +61,7 @@ func main() {
 				fmt.Println("Too many arguments in 'map' command")
 				break
 			}
-			if err := commands[val].callback(&config, ""); err != nil {
+			if err := commands[cmd].callback(&config, ""); err != nil {
 				fmt.Println("ERROR with map: ", err)
 			}
 		case "mapb":
@@ -64,7 +69,7 @@ func main() {
 				fmt.Println("Too many arguments in 'mapb' command")
 				break
 			}
-			if err := commands[val].callback(&config, ""); err != nil {
+			if err := commands[cmd].callback(&config, ""); err != nil {
 				fmt.Println("ERROR with mapb: ", err)
 			}
 		case "explore":
@@ -73,9 +78,19 @@ func main() {
 				break
 			}
 			city := strs[1]
-			if err := commands[strs[0]].callback(&config, city); err != nil {
+			if err := commands[cmd].callback(&config, city); err != nil {
 				fmt.Println("ERROR with explore: ", err)
 			}
+		case "catch":
+			if len(strs) > 2 {
+				fmt.Println("Too many arguments in 'catch' command")
+				break
+			}
+			pokemon := strs[1]
+			if err := commands[cmd].callback(&config, pokemon); err != nil {
+				fmt.Println("ERROR with catch: ", err)
+			}
+
 		default:
 			fmt.Println("Unknown command, see 'help' for available commands")
 		}

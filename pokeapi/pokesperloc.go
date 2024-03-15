@@ -63,7 +63,7 @@ type PokeEncounters struct {
 	} `json:"version_details"`
 }
 
-func PokeApiPokePerLocationCall(url string) ([]byte, error) {
+func PokemonApiPokePerLocationCall(url string) ([]byte, error) {
 	res, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("Failed HTTP request: %v", err)

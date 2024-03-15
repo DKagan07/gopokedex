@@ -73,7 +73,6 @@ func (c *Cache) reapLoop() {
 			for k, v := range c.cacheEntry {
 				ttk := v.createdAt.Add(c.duration)
 				if time.Now().After(ttk) {
-					fmt.Println("deleted entry: ", k)
 					delete(c.cacheEntry, k)
 				}
 			}

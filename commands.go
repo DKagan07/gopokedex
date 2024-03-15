@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 
 	"github.com/DKagan07/gopokedex/pokeapi"
@@ -12,9 +13,10 @@ import (
 const pokemonApiV2 = "https://pokeapi.co/api/v2"
 
 type Config struct {
-	next  string
-	prev  string
-	cache *pokecache.Cache
+	next    string
+	prev    string
+	cache   *pokecache.Cache
+	pokedex map[string]pokeapi.Pokemon
 }
 
 type cliCommand struct {
@@ -50,6 +52,11 @@ func commands() map[string]cliCommand {
 			name:        "explore",
 			description: "Explores the pokemon found in a particular area",
 			callback:    exploreCallback,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Gives you a /chance/ to add a Pokemon to your Pokedex",
+			callback:    catchCallback,
 		},
 	}
 }
@@ -92,7 +99,6 @@ func mapCallback(cfg *Config, param string) error {
 	}
 	url := cfg.next
 	v, ok := cfg.cache.Get(url)
-	// If it's not in cache
 	if !ok {
 		body, err := pokeapi.PokemonApiLocationCall(url)
 		if err != nil {
@@ -140,7 +146,6 @@ func mapbCallback(cfg *Config, param string) error {
 	url := cfg.prev
 
 	v, ok := cfg.cache.Get(url)
-	// not in get
 	if !ok {
 		body, err := pokeapi.PokemonApiLocationCall(url)
 		if err != nil {
@@ -152,7 +157,7 @@ func mapbCallback(cfg *Config, param string) error {
 		if err != nil {
 			return fmt.Errorf("Error with unmarshalling location result: %v", err)
 		}
-	} else { // in get, we have []byte
+	} else {
 		var err error
 		locations, err = pokeapi.UnmarshalToLocationResult(v)
 		if err != nil {
@@ -180,8 +185,8 @@ func exploreCallback(cfg *Config, param string) error {
 	url := fmt.Sprintf("%s/location-area/%s", pokemonApiV2, param)
 
 	v, ok := cfg.cache.Get(url)
-	if !ok { // if not in cache, we have to api call
-		bytes, err := pokeapi.PokeApiPokePerLocationCall(url)
+	if !ok {
+		bytes, err := pokeapi.PokemonApiPokePerLocationCall(url)
 		if err != nil {
 			return fmt.Errorf("http request to get pokesperlocation: %v", err)
 		}
@@ -204,6 +209,54 @@ func exploreCallback(cfg *Config, param string) error {
 	fmt.Println("Found Pokemon: ")
 	for _, v := range pokePerLocation.PokemonEncounters {
 		fmt.Println("- ", v.Pokemon.Name)
+	}
+
+	return nil
+}
+
+func catchCallback(cfg *Config, param string) error {
+	fmt.Printf("Throwing pokeball at %s...\n", param)
+	pkmn := pokeapi.Pokemon{}
+	if param == "" {
+		return errors.New("Not enough paramters to call 'catch'")
+	}
+	url := fmt.Sprintf("%s/pokemon/%s", pokemonApiV2, param)
+
+	v, ok := cfg.cache.Get(url)
+	if !ok {
+		body, err := pokeapi.PokemonApiPokeInfoByNameCall(url)
+		if err != nil {
+			return fmt.Errorf("sending poke http call: %v", err)
+		}
+
+		cfg.cache.Add(url, body)
+
+		pkmn, err = pokeapi.UnmarshalToPokemonInfo(body)
+		if err != nil {
+			return err
+		}
+	} else {
+		var err error
+		pkmn, err = pokeapi.UnmarshalToPokemonInfo(v)
+		if err != nil {
+			return errors.New("unmarshaling json")
+		}
+	}
+
+	// Logic to determine if the user catches the pokemon
+	baseExp := pkmn.BaseExperience
+	randomMulti := rand.Float32()
+	catchPercentage := float32(baseExp) * randomMulti
+
+	if catchPercentage <= 50.00 {
+		fmt.Printf("Caught %s!\n", param)
+		if _, ok := cfg.pokedex[param]; !ok {
+			cfg.pokedex[param] = pkmn
+		} else {
+			fmt.Printf("%s is already in your pokedex!\n", param)
+		}
+	} else {
+		fmt.Printf("%s escaped!\n", param)
 	}
 
 	return nil
