@@ -84,13 +84,19 @@ func main() {
 		case "catch":
 			if len(strs) > 2 {
 				fmt.Println("Too many arguments in 'catch' command")
-				break
 			}
 			pokemon := strs[1]
 			if err := commands[cmd].callback(&config, pokemon); err != nil {
 				fmt.Println("ERROR with catch: ", err)
 			}
-
+		case "inspect":
+			if len(strs) > 3 {
+				fmt.Println("Too many arguments in 'inspect' command")
+			}
+			pokemon := strs[1]
+			if err := commands[cmd].callback(&config, pokemon); err != nil {
+				fmt.Println("ERROR with inspect: ", err)
+			}
 		default:
 			fmt.Println("Unknown command, see 'help' for available commands")
 		}

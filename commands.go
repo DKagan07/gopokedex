@@ -58,6 +58,11 @@ func commands() map[string]cliCommand {
 			description: "Gives you a /chance/ to add a Pokemon to your Pokedex",
 			callback:    catchCallback,
 		},
+		"inspect": {
+			name:        "inspect",
+			description: "Lists some attributes of a pokemon you've caught",
+			callback:    inspectCallback,
+		},
 	}
 }
 
@@ -257,6 +262,28 @@ func catchCallback(cfg *Config, param string) error {
 		}
 	} else {
 		fmt.Printf("%s escaped!\n", param)
+	}
+
+	return nil
+}
+
+func inspectCallback(cfg *Config, param string) error {
+	dex := cfg.pokedex
+	pokeStats, ok := dex[param]
+	if !ok {
+		return fmt.Errorf("You have not caught %s.", param)
+	}
+
+	fmt.Println("Name:", param)
+	fmt.Println("Height:", pokeStats.Height)
+	fmt.Println("Weight:", pokeStats.Weight)
+	fmt.Println("Stats: ")
+	for _, v := range pokeStats.Stats {
+		fmt.Printf("  -%s: %d\n", v.Stat.Name, v.BaseStat)
+	}
+	fmt.Println("Types:")
+	for _, v := range pokeStats.Types {
+		fmt.Println("  -", v.Type.Name)
 	}
 
 	return nil
