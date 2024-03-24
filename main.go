@@ -97,6 +97,13 @@ func main() {
 			if err := commands[cmd].callback(&config, pokemon); err != nil {
 				fmt.Println("ERROR with inspect: ", err)
 			}
+		case "pokedex":
+			if len(strs) > 2 {
+				fmt.Println("Too many arguments in 'pokedex' command")
+			}
+			if err := commands[cmd].callback(&config, ""); err != nil {
+				fmt.Println("ERROR with inspect: ", err)
+			}
 		default:
 			fmt.Println("Unknown command, see 'help' for available commands")
 		}

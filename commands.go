@@ -63,6 +63,11 @@ func commands() map[string]cliCommand {
 			description: "Lists some attributes of a pokemon you've caught",
 			callback:    inspectCallback,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Lists all pokemon you have in your pokedex",
+			callback:    pokedexCallback,
+		},
 	}
 }
 
@@ -255,6 +260,7 @@ func catchCallback(cfg *Config, param string) error {
 
 	if catchPercentage <= 50.00 {
 		fmt.Printf("Caught %s!\n", param)
+		fmt.Println("You may now inspect this pokemon in with the 'inspect' command")
 		if _, ok := cfg.pokedex[param]; !ok {
 			cfg.pokedex[param] = pkmn
 		} else {
@@ -286,5 +292,21 @@ func inspectCallback(cfg *Config, param string) error {
 		fmt.Println("  -", v.Type.Name)
 	}
 
+	return nil
+}
+
+func pokedexCallback(cfg *Config, param string) error {
+	if param != "" {
+		return fmt.Errorf("Parameter %s not needed for this function", param)
+	}
+
+	if len(cfg.pokedex) == 0 {
+		fmt.Println("No pokemon in your pokedex! Go explore and catch some!")
+		return nil
+	}
+	fmt.Println("Your pokedex:")
+	for poke := range cfg.pokedex {
+		fmt.Println("  -", poke)
+	}
 	return nil
 }
